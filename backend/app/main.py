@@ -3,16 +3,22 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
+from redis import Redis
+from sqlalchemy import text
 from app.api.routes import router
 from app.api.url_scraper_routes import router as url_scraper_router
 from app.api.transcript_routes import router as transcript_router
 from app.api.json_editor_routes import router as json_editor_router
+from app.core.config import settings
 from app.db.database import engine, Base
 from app.core.logger import setup_uvicorn_log_filter
 
 Base.metadata.create_all(bind=engine)
 
 setup_uvicorn_log_filter()
+
+settings.require_internal_api_key()
+cors_allowed_origins = settings.cors_allowed_origins()
 
 app = FastAPI(
     title="Pazaryeri Veri Analiz API",
@@ -22,15 +28,50 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-API-Key"],
 )
+
+
+def _database_reachable() -> bool:
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+        return True
+    except Exception:
+        return False
+
+
+def _queue_reachable() -> bool:
+    client = None
+    try:
+        client = Redis.from_url(
+            settings.REDIS_URL,
+            socket_connect_timeout=1,
+            socket_timeout=1,
+        )
+        return bool(client.ping())
+    except Exception:
+        return False
+    finally:
+        if client is not None:
+            try:
+                client.close()
+            except Exception:
+                pass
+
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy"}
+    return {
+        "status": "healthy",
+        "scraper_api_configured": settings.has_scraper_api(),
+        "price_monitor_executor": settings.price_monitor_executor(),
+        "database_reachable": _database_reachable(),
+        "queue_reachable": _queue_reachable(),
+    }
 
 app.include_router(router, prefix="/api")
 app.include_router(url_scraper_router)
