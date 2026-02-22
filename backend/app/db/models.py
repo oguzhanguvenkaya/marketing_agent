@@ -333,3 +333,110 @@ class TranscriptResult(Base):
     
     class Config:
         from_attributes = True
+
+
+class StoreProduct(Base):
+    __tablename__ = "store_products"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    platform = Column(String(30), nullable=False, index=True)
+    source_url = Column(Text, nullable=False)
+    sku = Column(String(100), index=True)
+    barcode = Column(String(50), index=True)
+    product_name = Column(Text)
+    brand = Column(String(255), index=True)
+    category = Column(Text)
+    category_breadcrumbs = Column(JSON)
+    price = Column(Numeric(10, 2))
+    currency = Column(String(10))
+    availability = Column(String(100))
+    rating = Column(Float)
+    rating_count = Column(Integer)
+    review_count = Column(Integer)
+    reviews = Column(JSON)
+    image_url = Column(Text)
+    images = Column(JSON)
+    description = Column(Text)
+    seller_name = Column(String(255))
+    shipping_info = Column(JSON)
+    return_policy = Column(JSON)
+    product_specs = Column(JSON)
+    additional_properties = Column(JSON)
+    related_products = Column(JSON)
+    og_data = Column(JSON)
+    scrape_result_id = Column(Integer, index=True)
+    monitored_product_id = Column(UUID(as_uuid=True), index=True)
+    raw_scraped_data = Column(JSON)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        Index('ix_store_products_platform_brand', 'platform', 'brand'),
+        Index('ix_store_products_platform_sku', 'platform', 'sku'),
+    )
+
+    class Config:
+        from_attributes = True
+
+
+class CategorySession(Base):
+    __tablename__ = "category_sessions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    platform = Column(String(30), nullable=False, index=True)
+    category_url = Column(Text, nullable=False)
+    category_name = Column(Text)
+    breadcrumbs = Column(JSON)
+    total_products = Column(Integer, default=0)
+    pages_scraped = Column(Integer, default=0)
+    filter_data = Column(JSON, nullable=True)
+    status = Column(String(20), default="active")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    category_products = relationship("CategoryProduct", back_populates="session", cascade="all, delete-orphan")
+
+    class Config:
+        from_attributes = True
+
+
+class CategoryProduct(Base):
+    __tablename__ = "category_products"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(UUID(as_uuid=True), ForeignKey("category_sessions.id"), nullable=False, index=True)
+    name = Column(Text)
+    url = Column(Text)
+    image_url = Column(Text)
+    brand = Column(String(255))
+    price = Column(Numeric(10, 2))
+    original_price = Column(Numeric(10, 2))
+    discount_percentage = Column(Float)
+    rating = Column(Float)
+    review_count = Column(Integer)
+    is_sponsored = Column(Boolean, default=False)
+    campaign_text = Column(Text)
+    seller_name = Column(String(255))
+    page_number = Column(Integer, default=1)
+    position = Column(Integer)
+    detail_fetched = Column(Boolean, default=False)
+    detail_data = Column(JSON)
+    sku = Column(String(100))
+    barcode = Column(String(50))
+    description = Column(Text)
+    specs = Column(JSON)
+    shipping_type = Column(String(100))
+    stock_status = Column(String(50))
+    category_path = Column(Text)
+    seller_list = Column(JSON)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    session = relationship("CategorySession", back_populates="category_products")
+
+    __table_args__ = (
+        Index('ix_category_products_session_page', 'session_id', 'page_number'),
+    )
+
+    class Config:
+        from_attributes = True

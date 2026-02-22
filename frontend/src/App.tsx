@@ -10,9 +10,13 @@ const Ads = lazy(() => import('./pages/Ads'))
 const PriceMonitor = lazy(() => import('./pages/PriceMonitor'))
 const Sellers = lazy(() => import('./pages/Sellers'))
 const SellerDetail = lazy(() => import('./pages/SellerDetail'))
+const HepsiburadaProducts = lazy(() => import('./pages/HepsiburadaProducts'))
+const TrendyolProducts = lazy(() => import('./pages/TrendyolProducts'))
+const WebProducts = lazy(() => import('./pages/WebProducts'))
 const UrlScraper = lazy(() => import('./pages/UrlScraper'))
 const VideoTranscripts = lazy(() => import('./pages/VideoTranscripts'))
 const JsonEditor = lazy(() => import('./pages/JsonEditor'))
+const CategoryExplorer = lazy(() => import('./pages/CategoryExplorer'))
 
 function PageLoader() {
   return (
@@ -35,9 +39,13 @@ function App() {
             <Route path="/price-monitor" element={<PriceMonitor />} />
             <Route path="/sellers" element={<Sellers />} />
             <Route path="/sellers/:merchantId" element={<SellerDetail />} />
+            <Route path="/hepsiburada" element={<HepsiburadaProducts />} />
+            <Route path="/trendyol" element={<TrendyolProducts />} />
+            <Route path="/web-products" element={<WebProducts />} />
             <Route path="/url-scraper" element={<UrlScraper />} />
             <Route path="/video-transcripts" element={<VideoTranscripts />} />
             <Route path="/json-editor" element={<JsonEditor />} />
+            <Route path="/category-explorer" element={<CategoryExplorer />} />
           </Routes>
         </Suspense>
       </Layout>

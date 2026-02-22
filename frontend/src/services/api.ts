@@ -732,4 +732,320 @@ export const stopTranscriptJob = async (jobId: string): Promise<{ success: boole
   return response.data;
 };
 
+export interface StoreProduct {
+  id: string;
+  platform: string;
+  source_url: string;
+  sku: string | null;
+  barcode: string | null;
+  product_name: string | null;
+  brand: string | null;
+  category: string | null;
+  category_breadcrumbs: Array<{ name: string; url: string; position: number }> | null;
+  price: number | null;
+  currency: string | null;
+  availability: string | null;
+  rating: number | null;
+  rating_count: number | null;
+  review_count: number | null;
+  reviews: Array<{ author: string; date: string; text: string; rating: number }> | null;
+  image_url: string | null;
+  images: string[] | null;
+  description: string | null;
+  seller_name: string | null;
+  shipping_info: { cost: string; currency: string } | null;
+  return_policy: { days: number; free_return: boolean } | null;
+  product_specs: Record<string, string> | null;
+  additional_properties: Record<string, string> | null;
+  related_products: string[] | null;
+  created_at: string | null;
+  updated_at: string | null;
+  raw_scraped_data?: any;
+  og_data?: any;
+}
+
+export interface StoreProductFilters {
+  brands: Array<{ name: string; count: number }>;
+  categories: Array<{ name: string; count: number }>;
+  platforms: Array<{ name: string; count: number }>;
+  price_range: { min: number; max: number; avg: number };
+}
+
+export interface FilteredStats {
+  avg_price: number;
+  brand_count: number;
+  category_count?: number;
+}
+
+export interface StoreProductListResponse {
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  products: StoreProduct[];
+  filtered_stats?: FilteredStats;
+}
+
+export interface CategoryProductItem {
+  id: number;
+  session_id: string;
+  name: string;
+  url: string;
+  image_url: string;
+  brand: string;
+  price: number | null;
+  original_price: number | null;
+  discount_percentage: number | null;
+  rating: number | null;
+  review_count: number | null;
+  is_sponsored: boolean;
+  campaign_text: string;
+  seller_name: string;
+  page_number: number;
+  position: number;
+  detail_fetched: boolean;
+  detail_data: any;
+  sku: string | null;
+  barcode: string | null;
+  description: string | null;
+  specs: Record<string, any> | null;
+  shipping_type: string | null;
+  stock_status: string | null;
+  category_path: string | null;
+  seller_list: Array<{ name: string; id?: string; listing_id?: string }> | null;
+  updated_at: string | null;
+  created_at: string | null;
+}
+
+export interface CategoryFilterData {
+  brands: string[];
+  sellers: string[];
+  price_range: { min: number; max: number };
+}
+
+export interface CategoryProductListResponse {
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  products: CategoryProductItem[];
+  filtered_stats: { avg_price: number; brand_count: number; seller_count?: number; last_scraped?: string | null };
+  sessions?: Array<{
+    id: string;
+    platform: string;
+    category_url: string;
+    category_name: string;
+    breadcrumbs: Array<{ name: string; url?: string }>;
+    total_products: number;
+    pages_scraped: number;
+    status: string;
+    created_at: string;
+    product_count: number;
+  }>;
+}
+
+export const getStoreProducts = async (params: {
+  platform?: string;
+  brand?: string;
+  category?: string;
+  search?: string;
+  min_price?: number;
+  max_price?: number;
+  min_rating?: number;
+  sku?: string;
+  barcode?: string;
+  sort_by?: string;
+  sort_dir?: string;
+  page?: number;
+  page_size?: number;
+}): Promise<StoreProductListResponse> => {
+  const response = await api.get('/store-products', { params });
+  return response.data;
+};
+
+export const getStoreProductFilters = async (platform?: string): Promise<StoreProductFilters> => {
+  const response = await api.get('/store-products/filters', { params: { platform } });
+  return response.data;
+};
+
+export const getStoreCategoryTree = async (platform?: string): Promise<{ tree: CategoryTreeNode[] }> => {
+  const response = await api.get('/store-products/category-tree', { params: { platform } });
+  return response.data;
+};
+
+export interface CategoryTreeNode {
+  name: string;
+  full_path: string;
+  count: number;
+  depth: number;
+  category_url?: string | null;
+  children: CategoryTreeNode[];
+}
+
+export const getStoreProductStats = async (): Promise<{ total_products: number; by_platform: Record<string, number> }> => {
+  const response = await api.get('/store-products/stats');
+  return response.data;
+};
+
+export const getStoreProduct = async (productId: string): Promise<StoreProduct> => {
+  const response = await api.get(`/store-products/${productId}`);
+  return response.data;
+};
+
+export const scrapeFromPriceMonitor = async (platform?: string): Promise<{ job_id: string; status: string; total_urls: number }> => {
+  const response = await api.post('/store-products/scrape-from-monitor', null, { params: { platform } });
+  return response.data;
+};
+
+export interface ScrapeJobStatus {
+  job_id: string;
+  status: string;
+  total: number;
+  completed: number;
+  failed: number;
+  pending: number;
+  skipped: number;
+  created_at: string | null;
+  completed_at: string | null;
+}
+
+export const getScrapeJobStatus = async (jobId: string): Promise<ScrapeJobStatus> => {
+  const response = await api.get(`/store-products/scrape-job-status/${jobId}`);
+  return response.data;
+};
+
+export const saveFromScrapeJob = async (jobId: string): Promise<{ saved: number; updated: number; total_results: number }> => {
+  const response = await api.post(`/store-products/save-from-scrape-job/${jobId}`);
+  return response.data;
+};
+
+export const deleteStoreProduct = async (productId: string): Promise<void> => {
+  await api.delete(`/store-products/${productId}`);
+};
+
+export const deleteAllStoreProducts = async (platform?: string): Promise<{ deleted: number }> => {
+  const response = await api.delete('/store-products', { params: { platform } });
+  return response.data;
+};
+
+export const scrapeFromUrls = async (urls: string[]): Promise<{ job_id: string; status: string; total_urls: number }> => {
+  const response = await api.post('/store-products/scrape-from-urls', { urls });
+  return response.data;
+};
+
+export const backfillPrices = async (platform?: string): Promise<{ message: string; updated: number; total_without_price: number }> => {
+  const response = await api.post('/store-products/backfill-prices', null, { params: { platform } });
+  return response.data;
+};
+
+export const importExcelProducts = async (file: File): Promise<{ created: number; updated: number; skipped: number; total_rows: number; filename: string }> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await api.post('/store-products/import-excel', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000,
+  });
+  return response.data;
+};
+
+export const scrapeCategoryPage = async (url: string, page: number = 1, sessionId?: string, pageCount: number = 1) => {
+  const response = await api.post('/category-explorer/scrape-page', {
+    url,
+    page,
+    session_id: sessionId || null,
+    page_count: pageCount,
+  }, { timeout: 300000 });
+  return response.data;
+};
+
+export const getCategorySessions = async (platform?: string) => {
+  const params: Record<string, string> = {};
+  if (platform) params.platform = platform;
+  const response = await api.get('/category-explorer/sessions', { params });
+  return response.data;
+};
+
+export const getCategorySession = async (sessionId: string) => {
+  const response = await api.get(`/category-explorer/sessions/${sessionId}`);
+  return response.data;
+};
+
+export const deleteCategorySession = async (sessionId: string) => {
+  const response = await api.delete(`/category-explorer/sessions/${sessionId}`);
+  return response.data;
+};
+
+export const fetchCategoryProductDetail = async (productIds: number[]) => {
+  const response = await api.post('/category-explorer/fetch-detail', {
+    product_ids: productIds,
+  });
+  return response.data;
+};
+
+export const bulkFetchCategoryDetails = async (sessionId: string, productIds?: number[]) => {
+  const response = await api.post('/category-explorer/bulk-fetch', {
+    session_id: sessionId,
+    product_ids: productIds || null,
+  });
+  return response.data;
+};
+
+export const getCategoryFetchStatus = async (sessionId: string) => {
+  const response = await api.get(`/category-explorer/fetch-status/${sessionId}`);
+  return response.data;
+};
+
+export const getCategoryProductDetail = async (productId: number) => {
+  const response = await api.get(`/category-explorer/products/${productId}`);
+  return response.data;
+};
+
+export const getCategoryProductsByCategory = async (params: {
+  category?: string;
+  platform?: string;
+  search?: string;
+  session_id?: string;
+  brand?: string;
+  seller?: string;
+  min_price?: number;
+  max_price?: number;
+  min_rating?: number;
+  is_sponsored?: boolean;
+  sort_by?: string;
+  sort_dir?: string;
+  page?: number;
+  page_size?: number;
+}): Promise<CategoryProductListResponse> => {
+  const response = await api.get('/category-explorer/products-by-category', { params });
+  return response.data;
+};
+
+export const getCategoryPageFilters = async (params: {
+  session_id?: string;
+  category?: string;
+  platform?: string;
+}): Promise<CategoryFilterData> => {
+  const response = await api.get('/category-explorer/category-filters', { params });
+  return response.data;
+};
+
+export const deleteCategoryProduct = async (productId: number) => {
+  const response = await api.delete(`/category-explorer/products/${productId}`);
+  return response.data;
+};
+
+export const deleteCategoryProductsBulk = async (productIds: number[]) => {
+  const response = await api.post('/category-explorer/delete-products', {
+    product_ids: productIds,
+  });
+  return response.data;
+};
+
+export const lookupSessionUrl = async (category: string, platform?: string): Promise<{category_url: string | null; session_id?: string; category_name?: string}> => {
+  const params: Record<string, string> = { category };
+  if (platform) params.platform = platform;
+  const response = await api.get('/category-explorer/session-url-lookup', { params });
+  return response.data;
+};
+
 export default api;

@@ -9,12 +9,16 @@ The Marketplace Data Analysis Platform empowers marketplace sellers and marketin
 - Limit to 8 products per search to manage costs
 - ScraperAPI as primary (cheaper), Bright Data for fallback
 
-## UI Theme
-- Dark color palette: dark-900 (#0a0b0d) to dark-300 (#3d434e)
-- Accent color: Cyan (#00d4ff) for primary actions and highlights
-- Status colors: Success green, Warning orange, Danger red with glow variants
+## UI Theme (Honey)
+- Light warm color palette: Background #fffbef, Card #fefbf0, Muted #f7eede, Border #e5e0d2
+- Primary accent: Dark brown (#5b4824), Secondary accent: Honey gold (#f7ce86), Tertiary: Sage (#e6ecd3)
+- Text colors: Primary #0f1419, Secondary #5f471d, Muted #9e8b66, Subtle #b5a382
+- Status colors: Success green (#22c55e), Warning orange (#f59e0b), Danger red (#cb5150)
+- Typography: Inter (body), Lora (headings), Space Grotesk (monospace)
+- Border radius: 0.875rem (14px) for cards and buttons
 - Reusable components: card-dark, btn-primary/secondary, input-dark, table-dark, badges, stat-card
 - Subtle animations: fade-in, slide-in, pulse-glow effects
+- Chart colors: #1e9df1, #00b87a, #f7b928, #17bf63, #e6245e
 
 ## System Architecture
 The platform is built with a clear separation of concerns, featuring a FastAPI backend (port 8000) and a React frontend (port 5173 dev / static served by backend in production). It employs a robust, two-stage scraping strategy for comprehensive data collection and a modular proxy architecture for reliable data acquisition. Celery + Redis handle async task execution for price monitoring and search jobs.
@@ -34,8 +38,9 @@ backend/app/
 ### Frontend Structure
 ```
 frontend/src/
-├── pages/         → 10 lazy-loaded pages (Dashboard, Products, ProductDetail, Ads, PriceMonitor,
-│                    Sellers, SellerDetail, UrlScraper, VideoTranscripts, JsonEditor)
+├── pages/         → 14 lazy-loaded pages (Dashboard, Products, ProductDetail, Ads, PriceMonitor,
+│                    Sellers, SellerDetail, HepsiburadaProducts, TrendyolProducts, WebProducts,
+│                    CategoryExplorer, UrlScraper, VideoTranscripts, JsonEditor)
 ├── components/    → Layout.tsx (sidebar, header, mobile menu)
 ├── services/      → api.ts (Axios client, 700+ lines), queryCache.ts (TTL-based cache)
 ├── App.tsx        → Router setup
@@ -68,12 +73,20 @@ Extracts transcripts using `youtube-transcript-api`. Supports single URL, bulk J
 ### JSON Product Editor
 Full-stack tool for editing product catalog JSON files with PostgreSQL persistence. Fully dynamic rendering: all product keys auto-detected and rendered based on value type. Supports any JSON structure. DB model: `JsonFile`. Routes: `/api/json-editor/`. Frontend: `/json-editor`.
 
-## Database Models (13 tables)
+### Marketplace Product Pages
+Three dedicated pages (Hepsiburada, Trendyol, Web) displaying scraped product data with advanced filtering. Uses `StoreProduct` table populated from URL scraper results. Supports filtering by category, brand, price range, rating, SKU, barcode. Product detail modal shows breadcrumb categories, reviews, specs, shipping info. "Scrape Products" button triggers bulk scraping from active price monitor products. Routes: `/api/store-products/`. Frontend: `/hepsiburada`, `/trendyol`, `/web-products`.
+
+### Category Explorer
+Competitive analysis tool to scrape and browse marketplace category pages. Paste a Hepsiburada or Trendyol category URL to view all product listings, breadcrumb navigation, filter by brand/price/sponsored status, and fetch detailed product data for each item. Two-step scraping: category page listing data first, then individual product detail on demand. Supports pagination via platform-specific parameters (sayfa for HB, pi for Trendyol). DB models: `CategorySession`, `CategoryProduct`. Routes: `/api/category-explorer/`. Frontend: `/category-explorer`.
+
+## Database Models (17 tables)
 - `Product`, `ProductSnapshot`, `ProductSeller`, `ProductReview`
 - `SearchTask`, `SponsoredBrandAd`, `SearchSponsoredProduct`
 - `MonitoredProduct`, `SellerSnapshot`, `PriceMonitorTask`
 - `ScrapeJob`, `ScrapeResult`
+- `StoreProduct`
 - `TranscriptJob`, `TranscriptResult`
+- `CategorySession`, `CategoryProduct`
 - `JsonFile`
 
 ## Key API Route Groups
@@ -83,6 +96,7 @@ Full-stack tool for editing product catalog JSON files with PostgreSQL persisten
 - `/api/url-scraper/*` → URL scraping jobs
 - `/api/transcripts/*` → YouTube transcript jobs
 - `/api/json-editor/*` → JSON file management
+- `/api/category-explorer/*` → Category page scraping and competitive analysis
 - `/health` → System health check
 
 ## Celery Tasks
@@ -121,5 +135,19 @@ Full-stack tool for editing product catalog JSON files with PostgreSQL persisten
 - `VITE_QUERY_CACHE_TTL_MS=45000`, `VITE_INTERNAL_API_KEY`
 
 ## Recent Changes
+- 2026-02-22: Theme change: Switched from Palantir dark theme to Honey light theme. Updated CSS variables, Tailwind config, Layout, and all 14 pages. Colors: cream backgrounds (#fffbef), dark brown primary (#5b4824), honey gold accent (#f7ce86). Typography: Inter body, Lora headings, Space Grotesk monospace. Chart colors updated to Honey palette
+- 2026-02-22: Hybrid detail fetch: Listings API (sellers/prices/stock/buybox/campaigns as clean JSON) + HTML (brand/description/specs via utagData) in parallel. SKU extracted from product URLs (pm-HBCXXXXX pattern) during category scrape. Removed dead _extract_hb_product_data_from_scripts(). Deferred Listings API call when SKU discovered from HTML. Price hierarchy: Listings API buybox #1 > utagData > parsed
+- 2026-02-22: Enhanced detail fetch: utagData parsing for brand, seller_list, SKU, barcode, category_path, stock_status, shipping_type, specs, description. New DB columns on CategoryProduct. Price fix: CSS class-based extraction (originalPrice/currentPrice/discountRate) replacing regex that captured campaign text. Duplicate handling: URL-based dedup with UPDATE on re-scrape. Sponsored ad URL resolution via redirect param. Frontend detail panel shows all new fields
+- 2026-02-22: Marketplace sidebar filter extraction: HB VerticalFilter brand links (19 brands), Satıcı facet script data with €XX→%XX URL decode (18 sellers), price ranges from Fiyat Aralığı. TY filters from __SEARCH_APP_INITIAL_STATE__. filter_data JSON column on CategorySession. category-filters endpoint merges marketplace + product-derived filters. Frontend instantly populates filter dropdowns from session.filter_data after scrape
+- 2026-02-22: Category Page filters: brand/seller/price range/rating/sponsored filters for scraped category products. Brand extraction from HB product cards (h2 vs a[title] diff). New /category-filters endpoint. Stats bar shows brand_count, seller_count, last_scraped. Sort options separated per view mode
+- 2026-02-22: Category Explorer redesign: multi-page scraping (page_count 1-20, HB ?sayfa=N / TY ?pi=N), "Get Product Details" panel with checkbox selection + Select All, bulk detail fetch with polling progress, cyan/purple visual separation for scrape vs detail operations
+- 2026-02-22: Collapsible sidebar: desktop toggle to collapse/expand sidebar (icon-only vs full labels), state persisted in localStorage, all pages auto-adjust. Mobile drawer behavior unchanged
+- 2026-02-22: Category URL auto-fill v2: category-tree endpoint now extracts marketplace category URLs from store_products raw_scraped_data breadcrumb JSON-LD. Each sidebar category node carries its permanent URL (100% HB, 85% TY coverage). Selecting a category instantly populates scrape URL without any fuzzy matching or external lookup
+- 2026-02-22: Added Category Explorer for competitive analysis: scrape HB/Trendyol category pages, view product listings with breadcrumb navigation, filter by brand/price/sponsored, bulk fetch product details. DB models: CategorySession, CategoryProduct. Routes: /api/category-explorer/. Frontend: /category-explorer
+- 2026-02-22: Added Excel import for web products (POST /api/store-products/import-excel), improved price extraction with multi-source fallback, redesigned product detail as slide-in side panel
+- 2026-02-22: Increased all concurrent workers to 40 (URL scraper, transcript, price monitor HB+TY)
+- 2026-02-22: Added geotargeting to all ScraperAPI methods: TR domains→country_code=eu, others→US/EU random
+- 2026-02-22: Added Marketplace Product Pages (Hepsiburada, Trendyol, Web) with StoreProduct model, advanced filtering, category breadcrumb extraction
+- 2026-02-22: Enhanced URL scraper: WebPage JSON-LD breadcrumb parsing, Trendyol SEO props parsing, reviews/shipping/return policy extraction
 - 2025-02-19: Cleaned up outdated planning/architecture documentation files
 - 2025-02-19: Created comprehensive project documentation (README.md, ARCHITECTURE.md, backend/README.md, frontend/README.md)
